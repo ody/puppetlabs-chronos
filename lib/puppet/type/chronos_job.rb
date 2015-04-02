@@ -1,3 +1,4 @@
+require 'puppet/property/boolean'
 Puppet::Type.newtype(:chronos_job) do
 
     @doc = "Manage creation/deletion of Chronos jobs."
@@ -8,12 +9,13 @@ Puppet::Type.newtype(:chronos_job) do
         desc "The name of the Chronos job."
     end
 
+    # It is way simpler to support localhost only.
     newparam(:host) do
         desc "The host/port to the chronos host. Defaults to localhost."
         defaultto 'http://localhost:4400'
     end
 
-    newparam(:command) do
+    newproperty(:command) do
         desc "The command to execute in the job."
         validate do |val|
             unless val.is_a? String
@@ -22,7 +24,7 @@ Puppet::Type.newtype(:chronos_job) do
         end
     end
 
-    newparam(:job_schedule) do
+    newproperty(:job_schedule) do
         desc "The scheduling for the job, in ISO8601 format."
         validate do |val|
             unless val.is_a? String
@@ -31,8 +33,9 @@ Puppet::Type.newtype(:chronos_job) do
         end
     end
 
-    newparam(:schedule_timezone) do
+    newproperty(:schedule_timezone) do
         desc "The time zone name to use when scheduling the job."
+        defaultto 'UTC'
         validate do |val|
             if not val.is_a? String
                 raise ArgumentError, "schedule_timezone parameter must be a String, got value of type #{val.class}"
@@ -40,7 +43,7 @@ Puppet::Type.newtype(:chronos_job) do
         end
     end
 
-    newparam(:epsilon) do
+    newproperty(:epsilon) do
         desc "The interval to run the job on, in ISO8601 duration format."
         validate do |val|
             unless val.is_a? String
@@ -49,8 +52,9 @@ Puppet::Type.newtype(:chronos_job) do
         end
     end
 
-    newparam(:owner) do
+    newproperty(:owner) do
         desc "The email address of the person or persons interested in the job status."
+        # Should we validate against http://www.ex-parrot.com/~pdw/Mail-RFC822-Address.html...?
         validate do |val|
             unless val.is_a? String
                 raise ArgumentError, "owner parameter must be a String, got value of type #{val.class}"
@@ -58,20 +62,18 @@ Puppet::Type.newtype(:chronos_job) do
         end
     end
 
-    newparam(:async, :boolean => true, :parent => Puppet::Parameter::Boolean) do
+    newproperty(:async, :boolean => true, :parent => Puppet::Property::Boolean) do
         desc "Whether or not the job runs in the background."
     end
 
-    newparam(:parents) do
-        desc "Optionally create parent Chronos jobs."
-        validate do |val|
-          unless val.is_a? Array
-            raise ArgumentError, "parents parameter must be an Array, got value of type #{val.class}"
-          end
-        end
+    newproperty(:parents) do
+        desc "Optionally associate with parent Chronos job(s)."
+        munge do |value|
+          value.to_a
+      end
     end
 
-    newparam(:retries) do
+    newproperty(:retries) do
       desc "Number of times to retry job execution after a failure."
       validate do |val|
         unless val.is_a? Fixnum
