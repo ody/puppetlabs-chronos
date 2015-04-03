@@ -11,32 +11,58 @@ Puppet::Type.type(:chronos_job).provide(:default) do
 
   mk_resource_methods
 
-  def self.instances
+  @default_target = 'http://localhost:4400'
+
+  class << self
+    attr_accessor :default_target, :target
+  end
+
+  def self.targets(resources = nil)
+    targets = []
+    # First get the default target
+    targets << self.default_target
+
+    if resources
+      resources.each do |name, resource|
+        if value = resource[:host]
+          targets << value
+        end
+      end
+    end
+
+    targets.uniq.compact
+  end
+
+  def self.instances(resources = nil)
 
     instances = []
 
-    jobs = HTTParty.get('http://localhost:4400/scheduler/jobs')
-
-    jobs.each do |job|
-      job = {
-        :name    => job['name'],
-        :async   => job['async'],
-        :command => job['command'],
-        :epsilon => job['epsilon'],
-        :owner   => job['owner'],
-        :retries => job['retries'],
-        :cpus    => job['cpus'],
-        :disk    => job['disk'],
-        :mem     => job['mem']
-      }
-
-      instances << new(job)
+    ltargets = targets(resources)
+    
+    ltargets.each do |target|
+      jobs = HTTParty.get("#{target}/scheduler/jobs")
+  
+      jobs.each do |job|
+        job = {
+          :name    => job['name'],
+          :async   => job['async'],
+          :command => job['command'],
+          :epsilon => job['epsilon'],
+          :owner   => job['owner'],
+          :retries => job['retries'],
+          :cpus    => job['cpus'],
+          :disk    => job['disk'],
+          :mem     => job['mem']
+        }
+  
+        instances << new(job)
+      end
     end
     instances
   end
 
   def self.prefetch(resources)
-    instances.each do |prov|
+    instances(resources).each do |prov|
       if res = resources[prov.name.to_s]
         res.provider = prov
       end
@@ -80,18 +106,7 @@ Puppet::Type.type(:chronos_job).provide(:default) do
   end
 
   def exists?
-    begin
-      response = HTTParty.get("#{resource[:host]}/scheduler/jobs")
-      body = JSON.parse(response.body)
-      body.each do |job|
-        if resource[:name] == job['name']
-          return true
-        end
-      end
-      return false
-    rescue HTTParty::Error
-      raise Puppet::Error, "Error while connecting to Chronos host #{resource[:host]}"
-    end
+    !(@property_hash[:ensure] == :absent or @property_hash.empty?)
   end
 
   def destroy

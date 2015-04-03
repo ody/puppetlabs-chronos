@@ -33,7 +33,7 @@ Puppet::Type.newtype(:chronos_job) do
         end
     end
 
-    newproperty(:schedule_timezone) do
+    newparam(:schedule_timezone) do
         desc "The time zone name to use when scheduling the job."
         defaultto 'UTC'
         validate do |val|
@@ -67,19 +67,19 @@ Puppet::Type.newtype(:chronos_job) do
     end
 
     newproperty(:parents) do
-        desc "Optionally associate with parent Chronos job(s)."
-        munge do |value|
-          value.to_a
+      desc "Optionally associate with parent Chronos job(s)."
+      munge do |value|
+        value.to_a
       end
     end
 
     newproperty(:retries) do
       desc "Number of times to retry job execution after a failure."
-      validate do |val|
-        unless val.is_a? Fixnum
-          raise ArgumentError, "retries parameter must be a Fixnum, got value of type #{val.class}"
+        validate do |val|
+            unless val.is_a? Fixnum
+                raise ArgumentError, "owner parameter must be a String, got value of type #{val.class}"
+            end
         end
-      end
     end
 
     autorequire(:chronos_job) do
